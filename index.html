@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcards Feature Engineering</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117; color: #e4e6ef;
+    min-height: 100vh; display: flex; justify-content: center;
+    padding: 24px 12px;
+  }
+  .container { width: 100%; max-width: 560px; }
+  .logo-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+  .logo-icon { color: #6c5ce7; font-size: 20px; }
+  .logo-text { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em; }
+  .subtitle { color: #8b8fa3; font-size: 15px; margin-bottom: 28px; }
+  .menu-buttons { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .btn-primary {
+    background: #6c5ce7; color: #fff; border: none; border-radius: 10px;
+    padding: 14px 24px; font-size: 15px; font-weight: 600; cursor: pointer;
+    font-family: inherit; transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #5a4bd1; }
+  .btn-secondary {
+    background: rgba(108,92,231,0.15); color: #a29bfe;
+    border: 1px solid rgba(108,92,231,0.3); border-radius: 10px;
+    padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-error {
+    background: rgba(225,112,85,0.1); color: #e17055;
+    border: 1px solid rgba(225,112,85,0.3); border-radius: 10px;
+    padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-ghost {
+    background: transparent; color: #8b8fa3; border: none;
+    padding: 10px 16px; font-size: 13px; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px; font-family: inherit;
+  }
+  .hint {
+    background: #1a1d27; border: 1px solid #2d3041; border-radius: 10px;
+    padding: 14px 16px; color: #8b8fa3; font-size: 13px; line-height: 1.6;
+  }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+  .score-bar { display: flex; align-items: center; gap: 12px; }
+  .score-pill {
+    background: rgba(108,92,231,0.15); color: #a29bfe;
+    border-radius: 20px; padding: 5px 14px; font-size: 14px; font-weight: 600;
+  }
+  .score-pct { color: #8b8fa3; font-weight: 400; }
+  .progress-text { color: #8b8fa3; font-size: 13px; }
+  .progress-track { height: 3px; background: #252836; border-radius: 2px; margin: 14px 0 24px; overflow: hidden; }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+    border-radius: 2px; transition: width 0.3s ease;
+  }
+  .card {
+    background: #1a1d27; border: 1px solid #2d3041;
+    border-radius: 14px; padding: 28px 24px; margin-bottom: 20px;
+  }
+  .question { font-size: 17px; font-weight: 500; line-height: 1.55; margin-bottom: 22px; }
+  .choices { display: flex; flex-direction: column; gap: 10px; }
+  .choice-btn {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    border: 1.5px solid #2d3041; border-radius: 10px; padding: 13px 16px;
+    font-size: 14px; line-height: 1.45; font-family: inherit;
+    background: #1a1d27; color: #e4e6ef; cursor: pointer; transition: all 0.15s ease;
+  }
+  .choice-btn:hover:not(.revealed) { border-color: #6c5ce7; }
+  .choice-btn.correct { background: rgba(0,184,148,0.12); border-color: #00b894; color: #00b894; }
+  .choice-btn.wrong { background: rgba(225,112,85,0.12); border-color: #e17055; color: #e17055; }
+  .choice-btn.revealed { cursor: default; }
+  .choice-letter {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 7px;
+    background: rgba(108,92,231,0.12); color: #a29bfe;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .feedback {
+    margin-top: 16px; padding: 10px 14px; border-radius: 8px;
+    font-size: 14px; font-weight: 600;
+  }
+  .feedback.ok { background: rgba(0,184,148,0.08); color: #00b894; }
+  .feedback.ko { background: rgba(225,112,85,0.08); color: #e17055; }
+  .nav { display: flex; justify-content: space-between; align-items: center; }
+  .nav-btn {
+    background: transparent; color: #8b8fa3; border: none;
+    padding: 10px 14px; font-size: 14px; cursor: pointer; font-family: inherit;
+  }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .result-box {
+    margin-top: 20px; padding: 20px; border-radius: 12px;
+    background: #1a1d27; border: 1px solid #2d3041; text-align: center;
+  }
+  .result-pct { font-size: 36px; font-weight: 700; }
+  .result-detail { color: #8b8fa3; font-size: 14px; margin-top: 4px; }
+  .result-msg { font-size: 15px; margin-top: 12px; font-weight: 500; }
+  .nav-group { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .hidden { display: none; }
+  .footer {
+    margin-top: 32px; text-align: center; color: #4a4d5e; font-size: 12px;
+    border-top: 1px solid #1e2130; padding-top: 16px;
+  }
+  .footer a { color: #6c5ce7; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="container" id="app">
+
+  <!-- MENU -->
+  <div id="menu-screen">
+    <div class="logo-bar">
+      <span class="logo-icon">&#9670;</span>
+      <span class="logo-text">Flashcards Quiz</span>
+    </div>
+    <h1>Feature Engineering</h1>
+    <p class="subtitle" id="menu-count"></p>
+    <div class="menu-buttons">
+      <button class="btn-primary" onclick="startQuiz('all')">Lancer le Quiz complet</button>
+      <button class="btn-secondary" onclick="startQuiz('quick')">Quiz rapide (30 questions)</button>
+      <button class="btn-error hidden" id="btn-review" onclick="startReview()">R&eacute;viser les erreurs (<span id="error-count">0</span>)</button>
+    </div>
+    <div class="hint">
+      Les questions sont m&eacute;lang&eacute;es &agrave; chaque lancement. En fin de quiz, tu peux r&eacute;viser uniquement les questions rat&eacute;es.
+    </div>
+    <div class="footer">
+      D&eacute;velopp&eacute; par Nasser
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="quiz-screen" class="hidden">
+    <div class="header">
+      <div class="logo-bar">
+        <span class="logo-icon">&#9670;</span>
+        <span class="logo-text" id="quiz-label">Quiz</span>
+      </div>
+      <div class="score-bar">
+        <span class="score-pill" id="score-pill">0 / 0</span>
+        <span class="progress-text" id="progress-text">1 / 1</span>
+      </div>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="card">
+      <p class="question" id="question-text"></p>
+      <div class="choices" id="choices-container"></div>
+      <div class="feedback hidden" id="feedback"></div>
+    </div>
+    <div class="nav" id="nav-bar">
+      <button class="nav-btn" id="btn-prev" onclick="goPrev()" disabled>&larr; Pr&eacute;c&eacute;dente</button>
+      <button class="nav-btn" id="btn-next" onclick="goNext()" disabled>Suivante &rarr;</button>
+    </div>
+    <div class="nav-group hidden" id="finish-bar">
+      <button class="btn-primary" onclick="goMenu()">Menu</button>
+      <button class="btn-error hidden" id="btn-review-end" onclick="startReview()">R&eacute;viser erreurs (<span id="error-count-end">0</span>)</button>
+    </div>
+    <div class="result-box hidden" id="result-box">
+      <div class="result-pct" id="result-pct"></div>
+      <div class="result-detail" id="result-detail"></div>
+      <div class="result-msg" id="result-msg"></div>
+    </div>
+    <button class="btn-ghost" style="margin-top:16px" onclick="goMenu()">Retour au menu</button>
+  </div>
+</div>
+
+<script>
+const LETTERS = ["A","B","C","D","E"];
+const QUESTIONS = [
+  {
+    "q": "Quel est l'objectif principal du Feature Engineering ?",
+    "choices": [
+      "Augmenter automatiquement le nombre de variables",
+      "Ameliorer la qualite des donnees afin d'ameliorer les performances du modele",
+      "Diminuer la taille des bases de donnees",
+      "Augmenter la vitesse du processeur"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Les trois grandes techniques de Feature Engineering vues dans le cours sont :",
+    "choices": [
+      "PCA, K-Means, SVM",
+      "Imputation, traitement des valeurs aberrantes, codage categoriel",
+      "Regression, clustering, ACP",
+      "Bagging, Boosting, Random Forest"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Une valeur aberrante peut provenir :",
+    "choices": [
+      "uniquement d'une erreur de saisie",
+      "uniquement d'un probleme technique",
+      "d'une erreur de saisie, d'un probleme technique ou etre une vraie observation",
+      "uniquement d'une fraude"
+    ],
+    "answer": 2
+  },
+  {
+    "q": "L'IQR correspond a :",
+    "choices": [
+      "Q1 + Q3",
+      "Q3 - Q1",
+      "moyenne(Q1,Q3)",
+      "Q2 - Q1"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Une valeur est consideree comme aberrante si :",
+    "choices": [
+      "elle depasse la moyenne",
+      "elle est superieure a Q3 + 1,5*IQR ou inferieure a Q1 - 1,5*IQR",
+      "elle depasse deux ecarts-types",
+      "elle depasse la mediane"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pourquoi ne faut-il pas supprimer systematiquement les valeurs aberrantes ?",
+    "choices": [
+      "Elles ralentissent Python",
+      "Elles peuvent contenir une information pertinente",
+      "Elles augmentent toujours la precision",
+      "Elles empechent le One-Hot Encoding"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pourquoi effectue-t-on une imputation ?",
+    "choices": [
+      "Pour supprimer les doublons",
+      "Parce que beaucoup d'algorithmes ne gerent pas les valeurs manquantes",
+      "Pour normaliser les donnees",
+      "Pour accelerer la validation croisee"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pour une variable numerique, quelle methode est generalement la plus robuste face aux valeurs extremes ?",
+    "choices": [
+      "Moyenne",
+      "Mediane",
+      "Maximum",
+      "Somme"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "La moyenne ou la mediane utilisee pour l'imputation doit etre calculee :",
+    "choices": [
+      "sur Train + Test",
+      "uniquement sur le Test",
+      "uniquement sur le Train",
+      "sur la validation croisee"
+    ],
+    "answer": 2
+  },
+  {
+    "q": "Pour une variable categorielle, la methode d'imputation la plus classique est :",
+    "choices": [
+      "la moyenne",
+      "la mediane",
+      "la modalite la plus frequente",
+      "le Target Encoding"
+    ],
+    "answer": 2
+  },
+  {
+    "q": "Pourquoi faut-il encoder les variables categorielles ?",
+    "choices": [
+      "Pour reduire le nombre de lignes",
+      "Parce que beaucoup d'algorithmes n'acceptent que des variables numeriques",
+      "Pour supprimer les outliers",
+      "Pour faire une ACP"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Le One-Hot Encoding consiste a :",
+    "choices": [
+      "attribuer un score a chaque modalite",
+      "creer une variable binaire pour chaque categorie",
+      "remplacer les categories par leur frequence",
+      "remplacer les categories par leur moyenne"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quel est le principal inconvenient du One-Hot Encoding ?",
+    "choices": [
+      "Il diminue la precision",
+      "Il ajoute beaucoup de colonnes",
+      "Il supprime des observations",
+      "Il fonctionne uniquement avec les arbres"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "L'encodage ordinal est adapte lorsque :",
+    "choices": [
+      "les categories possedent un ordre naturel",
+      "les categories sont totalement independantes",
+      "il existe des valeurs manquantes",
+      "les variables sont numeriques"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Le Target Encoding remplace chaque modalite par :",
+    "choices": [
+      "son numero",
+      "sa frequence",
+      "P(Y=1 | modalite)",
+      "la mediane"
+    ],
+    "answer": 2
+  },
+  {
+    "q": "Le Weight of Evidence (WoE) repose principalement sur :",
+    "choices": [
+      "une difference de moyennes",
+      "un logarithme de probabilites",
+      "une ACP",
+      "un arbre de decision"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quel est l'objectif principal de la selection de variables ?",
+    "choices": [
+      "Ajouter du bruit",
+      "Garder uniquement les variables pertinentes",
+      "Augmenter le nombre de variables",
+      "Reduire la taille du train"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "La selection de variables permet notamment :",
+    "choices": [
+      "un modele plus stable",
+      "moins de bruit",
+      "une implementation plus simple",
+      "Toutes les reponses precedentes"
+    ],
+    "answer": 3
+  },
+  {
+    "q": "Le filtrage (Filter Method) selectionne les variables :",
+    "choices": [
+      "independamment du modele",
+      "uniquement avec Random Forest",
+      "uniquement avec XGBoost",
+      "uniquement avec une regression logistique"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Le Recursive Feature Elimination (RFE) appartient a quelle famille ?",
+    "choices": [
+      "Filter",
+      "Wrapper",
+      "Embedded",
+      "PCA"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Dans le RFE, quelle est la premiere etape ?",
+    "choices": [
+      "Supprimer les variables",
+      "Construire un modele avec toutes les variables",
+      "Faire une ACP",
+      "Creer des variables"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Apres avoir entraine le modele dans le RFE, que fait-on ?",
+    "choices": [
+      "On ajoute des variables",
+      "On calcule l'importance des variables",
+      "On normalise les donnees",
+      "On fait une ACP"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Le processus du RFE s'arrete lorsque :",
+    "choices": [
+      "toutes les variables sont supprimees",
+      "il reste les variables jugees pertinentes",
+      "le nombre d'observations diminue",
+      "la moyenne augmente"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Laquelle des propositions n'est PAS une methode de selection de variables vue dans le cours ?",
+    "choices": [
+      "Filtrage",
+      "Wrapper",
+      "Integration (Embedded)",
+      "K-Means"
+    ],
+    "answer": 3
+  },
+  {
+    "q": "Parmi ces notions, laquelle est la moins susceptible d'etre demandee en entretien junior ?",
+    "choices": [
+      "IQR",
+      "One-Hot Encoding",
+      "WoE (formule detaillee)",
+      "Imputation par la mediane"
+    ],
+    "answer": 2
+  },
+  {
+    "q": "Une variable possede 99,8 % de valeurs identiques. Quelle technique est la plus appropriee ?",
+    "choices": [
+      "PCA",
+      "Variance Threshold",
+      "ANOVA",
+      "RFE"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Le principal objectif du Variance Threshold est de supprimer :",
+    "choices": [
+      "les variables correlees",
+      "les variables peu informatives",
+      "les observations aberrantes",
+      "les valeurs manquantes"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pourquoi une variable constante est-elle inutile ?",
+    "choices": [
+      "Elle provoque du Data Leakage",
+      "Elle n'apporte aucune information discriminante",
+      "Elle augmente la variance",
+      "Elle empeche le One-Hot"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Une variable possede une variance tres faible mais est fortement predictive du defaut bancaire. Que fais-tu ?",
+    "choices": [
+      "Je la supprime automatiquement",
+      "Je verifie son pouvoir predictif avant decision",
+      "Je fais un One-Hot",
+      "Je normalise"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Deux variables ont une correlation de 0.99.",
+    "choices": [
+      "C'est souhaitable",
+      "Cela indique une forte redondance",
+      "Elles doivent etre normalisees",
+      "Elles doivent etre imputees"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pourquoi la multicolinearite pose surtout probleme pour :",
+    "choices": [
+      "Random Forest",
+      "Regression Logistique",
+      "XGBoost",
+      "K-Means"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quel indicateur est souvent utilise pour detecter la multicolinearite ?",
+    "choices": [
+      "Accuracy",
+      "VIF",
+      "Recall",
+      "Entropy"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Un VIF de 18 indique generalement :",
+    "choices": [
+      "aucun probleme",
+      "une forte multicolinearite",
+      "une faible variance",
+      "un surapprentissage"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quelle methode est la plus simple pour reduire la multicolinearite ?",
+    "choices": [
+      "supprimer une variable correlee",
+      "ajouter des observations",
+      "One-Hot",
+      "Imputation"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Le test du Chi2 est principalement utilise entre :",
+    "choices": [
+      "deux variables numeriques",
+      "une variable categorielle et une cible categorielle",
+      "deux variables continues",
+      "deux probabilites"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Le Chi2 mesure principalement :",
+    "choices": [
+      "une correlation lineaire",
+      "une dependance entre variables categorielles",
+      "une variance",
+      "une distance"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pourquoi le Chi2 n'est-il pas adapte a une variable continue ?",
+    "choices": [
+      "Parce qu'il necessite des categories",
+      "Parce qu'il est trop lent",
+      "Parce qu'il necessite un arbre",
+      "Parce qu'il utilise une regression"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "L'ANOVA compare principalement :",
+    "choices": [
+      "plusieurs moyennes",
+      "plusieurs medianes",
+      "plusieurs variances uniquement",
+      "plusieurs correlations"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "En Feature Selection, ANOVA est utilisee lorsque :",
+    "choices": [
+      "X est numerique et y est categorielle",
+      "X est categorielle et y est numerique",
+      "X et y sont categorielles",
+      "X et y sont numeriques"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Une p-value tres faible dans ANOVA indique :",
+    "choices": [
+      "la variable est probablement informative",
+      "la variable est inutile",
+      "presence d'outliers",
+      "multicolinearite"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "La Mutual Information detecte :",
+    "choices": [
+      "uniquement des relations lineaires",
+      "des relations lineaires et non lineaires",
+      "uniquement des correlations negatives",
+      "uniquement des variables categorielles"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pourquoi preferer Mutual Information a Pearson ?",
+    "choices": [
+      "elle detecte aussi des dependances non lineaires",
+      "elle est plus rapide",
+      "elle supprime les outliers",
+      "elle reduit la dimension"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Si Pearson = 0 mais Mutual Information elevee :",
+    "choices": [
+      "aucune relation",
+      "relation probablement non lineaire",
+      "erreur de calcul",
+      "multicolinearite"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quel cas cree un Data Leakage ?",
+    "choices": [
+      "One-Hot apres Train/Test Split",
+      "Target Encoding avant Train/Test Split",
+      "Imputation sur Train",
+      "Standardisation sur Train"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pourquoi le Target Encoding peut-il provoquer du Leakage ?",
+    "choices": [
+      "il utilise la variable cible",
+      "il cree trop de colonnes",
+      "il augmente la variance",
+      "il supprime des observations"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Une variable possede 3000 modalites. Quel encodage est le moins adapte ?",
+    "choices": [
+      "One-Hot",
+      "Target Encoding",
+      "WoE",
+      "Frequency Encoding"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Pourquoi les banques utilisent encore beaucoup le WoE ?",
+    "choices": [
+      "interpretable et compatible avec les scorecards",
+      "plus rapide que One-Hot",
+      "fonctionne uniquement avec Random Forest",
+      "reduit le nombre d'observations"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Le Dummy Variable Trap apparait principalement avec :",
+    "choices": [
+      "One-Hot sans suppression d'une modalite",
+      "PCA",
+      "Chi2",
+      "RFE"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Lequel effectue naturellement une selection de variables ?",
+    "choices": [
+      "Decision Tree",
+      "KNN",
+      "Naive Bayes",
+      "K-Means"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Pourquoi Lasso realise une selection de variables ?",
+    "choices": [
+      "penalite L1",
+      "penalite L2",
+      "bootstrap",
+      "bagging"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Pourquoi Ridge ne supprime generalement pas les variables ?",
+    "choices": [
+      "penalite L2",
+      "penalite L1",
+      "bootstrap",
+      "entropie"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quel est le principal inconvenient du RFE ?",
+    "choices": [
+      "couteux en calcul",
+      "peu precis",
+      "uniquement categoriel",
+      "necessite des arbres"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Pourquoi RFE est-il plus couteux qu'un Filter ?",
+    "choices": [
+      "il entraine plusieurs modeles",
+      "il cree plusieurs variables",
+      "il normalise",
+      "il encode"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Tu construis un modele de Credit Scoring. Tu privilegies :",
+    "choices": [
+      "interpretabilite",
+      "uniquement accuracy",
+      "uniquement recall",
+      "uniquement vitesse"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Pourquoi les banques aiment les modeles interpretables ?",
+    "choices": [
+      "exigences reglementaires",
+      "GPU limite",
+      "SQL uniquement",
+      "moins de RAM"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quel encodage est historiquement le plus utilise en Credit Scoring ?",
+    "choices": [
+      "WoE",
+      "One-Hot",
+      "Label Encoding",
+      "PCA"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Une variable possede 97 % de valeurs manquantes.",
+    "choices": [
+      "toujours supprimer",
+      "analyser avant decision",
+      "moyenne",
+      "mediane"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Une variable est fortement correlee avec une autre mais beaucoup plus interpretable.",
+    "choices": [
+      "conserver la plus interpretable",
+      "supprimer les deux",
+      "One-Hot",
+      "PCA"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quel test choisir pour selectionner une variable categorielle avec une cible binaire ?",
+    "choices": [
+      "Chi2",
+      "Pearson",
+      "Spearman",
+      "ANOVA"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quel test choisir pour une variable numerique avec une cible categorielle ?",
+    "choices": [
+      "ANOVA",
+      "Chi2",
+      "Pearson",
+      "WoE"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quelle methode detecte les relations non lineaires ?",
+    "choices": [
+      "Mutual Information",
+      "Pearson",
+      "Variance Threshold",
+      "Correlation simple"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Une variable possede une variance elevee. Que peut-on conclure ?",
+    "choices": [
+      "elle est forcement importante",
+      "rien",
+      "elle est correlee",
+      "elle est inutile"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Une faible variance implique forcement une variable inutile.",
+    "choices": [
+      "vrai",
+      "faux"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quelle methode est la plus rapide ?",
+    "choices": [
+      "Filter",
+      "Wrapper",
+      "Boruta",
+      "RFE"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quelle methode est generalement la plus couteuse ?",
+    "choices": [
+      "Wrapper",
+      "Filter",
+      "Variance Threshold",
+      "Chi2"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Boruta est base sur :",
+    "choices": [
+      "Random Forest",
+      "SVM",
+      "KNN",
+      "PCA"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quel est le principal objectif de Boruta ?",
+    "choices": [
+      "trouver toutes les variables reellement utiles",
+      "reduire la dimension",
+      "normaliser",
+      "encoder"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Tu dois expliquer un refus de credit. Quel modele sera souvent prefere ?",
+    "choices": [
+      "Regression Logistique",
+      "Reseau de neurones profond",
+      "Transformer",
+      "AutoEncoder"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quelle methode de selection est generalement la plus robuste sur un tres grand nombre de variables ?",
+    "choices": [
+      "Embedded",
+      "Wrapper",
+      "Filter uniquement",
+      "aucune"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Tu disposes de 1 500 variables pour un modele de scoring bancaire. Quelle strategie est la plus pertinente ?",
+    "choices": [
+      "RFE directement sur les 1 500 variables",
+      "Filter -> Embedded -> eventuellement Wrapper sur les dernieres variables",
+      "One-Hot sur toutes les variables puis RFE",
+      "Ne faire aucune selection"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Variance Threshold supprime :",
+    "choices": [
+      "les variables fortement correlees",
+      "les variables ayant une faible variance",
+      "les variables avec beaucoup de NA",
+      "les observations aberrantes"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pourquoi une faible variance ne signifie-t-elle pas forcement qu'une variable est inutile ?",
+    "choices": [
+      "Parce qu'elle peut etre tres discriminante",
+      "Parce qu'elle contient des NA",
+      "Parce qu'elle est categorielle",
+      "Parce qu'elle est normalisee"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quelle est l'hypothese nulle du test ANOVA ?",
+    "choices": [
+      "Les variances sont egales",
+      "Toutes les moyennes sont egales",
+      "Les variables sont independantes",
+      "Les correlations sont nulles"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quelle est l'hypothese alternative du test ANOVA ?",
+    "choices": [
+      "Toutes les moyennes sont differentes",
+      "Au moins une moyenne est differente",
+      "Les variances sont differentes",
+      "Les distributions sont normales"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quelle statistique est calculee dans l'ANOVA ?",
+    "choices": [
+      "chi2",
+      "t",
+      "F",
+      "z"
+    ],
+    "answer": 2
+  },
+  {
+    "q": "Le F-statistique est egal a :",
+    "choices": [
+      "Variance intra / variance inter",
+      "Variance inter / variance intra",
+      "Moyenne / variance",
+      "Variance / moyenne"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Une p-value de 0.0008 dans une ANOVA signifie :",
+    "choices": [
+      "On accepte H0",
+      "On rejette H0",
+      "Les variances sont egales",
+      "Le modele est bon"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "ANOVA est principalement utilisee lorsque :",
+    "choices": [
+      "X est categorielle, y numerique",
+      "X numerique, y categorielle",
+      "X et y categorielles",
+      "X et y numeriques"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quelle est l'hypothese nulle du test du Chi2 d'independance ?",
+    "choices": [
+      "Les deux variables sont independantes",
+      "Les deux variables sont correlees",
+      "Les moyennes sont egales",
+      "Les variances sont egales"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Le Chi2 est calcule grace a :",
+    "choices": [
+      "sum(Oi-Ei)",
+      "sum((Oi-Ei)^2/Ei)",
+      "sum(Oi*Ei)",
+      "sum(Oi+Ei)"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Le Chi2 permet principalement de mesurer :",
+    "choices": [
+      "une correlation",
+      "une dependance entre variables categorielles",
+      "une variance",
+      "une covariance"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Pourquoi le Chi2 ne fonctionne-t-il pas directement avec une variable continue ?",
+    "choices": [
+      "Parce qu'il necessite des effectifs par categorie",
+      "Parce qu'il utilise une regression",
+      "Parce qu'il necessite une normalisation",
+      "Parce qu'il suppose une variance constante"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "Quelle fonction Scikit-learn permet d'utiliser le test Chi2 pour la selection de variables ?",
+    "choices": [
+      "VarianceThreshold()",
+      "chi2()",
+      "f_classif()",
+      "mutual_info_classif()"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quelle fonction correspond au test ANOVA dans sklearn ?",
+    "choices": [
+      "chi2",
+      "f_classif",
+      "f_regression",
+      "mutual_info_classif"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quelle methode detecte des relations non lineaires ?",
+    "choices": [
+      "Pearson",
+      "Spearman",
+      "Mutual Information",
+      "Variance Threshold"
+    ],
+    "answer": 2
+  },
+  {
+    "q": "La Mutual Information est nulle lorsque :",
+    "choices": [
+      "les variables sont independantes",
+      "les variables sont normales",
+      "les variances sont egales",
+      "la correlation vaut 1"
+    ],
+    "answer": 0
+  },
+  {
+    "q": "La formule du VIF est :",
+    "choices": [
+      "R^2",
+      "1/(1-R^2)",
+      "1-R^2",
+      "sqrt(R^2)"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Un VIF de 15 indique generalement :",
+    "choices": [
+      "faible multicolinearite",
+      "forte multicolinearite",
+      "faible variance",
+      "surapprentissage"
+    ],
+    "answer": 1
+  },
+  {
+    "q": "Quelle methode est la plus rapide sur 5 000 variables ?",
+    "choices": [
+      "RFE",
+      "Boruta",
+      "Variance Threshold",
+      "RFECV"
+    ],
+    "answer": 2
+  },
+  {
+    "q": "Pourquoi RFE est-il beaucoup plus couteux qu'un filtre ?",
+    "choices": [
+      "Il entraine plusieurs modeles successifs",
+      "Il calcule des correlations",
+      "Il fait une ACP",
+      "Il encode les variables"
+    ],
+    "answer": 0
+  }
+];
+
+let deck = [], idx = 0, selected = null, revealed = false;
+let score = 0, answered = 0, errors = [], allErrors = [];
+
+function shuffle(a) {
+  a = [...a];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function show(id) { document.getElementById(id).classList.remove("hidden"); }
+function hide(id) { document.getElementById(id).classList.add("hidden"); }
+function $(id) { return document.getElementById(id); }
+
+function goMenu() {
+  hide("quiz-screen"); show("menu-screen");
+  $("menu-count").textContent = QUESTIONS.length + " questions";
+  if (allErrors.length > 0) {
+    show("btn-review");
+    $("error-count").textContent = allErrors.length;
+  } else {
+    hide("btn-review");
+  }
+}
+
+function startQuiz(type) {
+  if (type === "quick") {
+    deck = shuffle(QUESTIONS).slice(0, 30);
+  } else {
+    deck = shuffle(QUESTIONS);
+  }
+  idx = 0; selected = null; revealed = false;
+  score = 0; answered = 0; errors = [];
+  hide("menu-screen"); show("quiz-screen");
+  hide("finish-bar"); hide("result-box"); show("nav-bar");
+  $("quiz-label").textContent = "Quiz";
+  render();
+}
+
+function startReview() {
+  if (allErrors.length === 0) return;
+  deck = shuffle(allErrors);
+  idx = 0; selected = null; revealed = false;
+  score = 0; answered = 0; errors = []; allErrors = [];
+  hide("menu-screen"); show("quiz-screen");
+  hide("finish-bar"); hide("result-box"); show("nav-bar");
+  $("quiz-label").textContent = "R\u00e9vision erreurs";
+  render();
+}
+
+function handleSelect(i) {
+  if (revealed) return;
+  selected = i;
+  revealed = true;
+  answered++;
+  if (i === deck[idx].answer) {
+    score++;
+  } else {
+    errors.push(deck[idx]);
+    allErrors.push(deck[idx]);
+  }
+  render();
+}
+
+function goNext() {
+  if (!revealed || idx >= deck.length - 1) return;
+  idx++; selected = null; revealed = false;
+  render();
+}
+
+function goPrev() {
+  if (idx <= 0) return;
+  idx--; selected = null; revealed = false;
+  render();
+}
+
+function render() {
+  const q = deck[idx];
+  const pct = answered > 0 ? Math.round((score / answered) * 100) : 0;
+  const finished = idx === deck.length - 1 && revealed;
+
+  $("score-pill").innerHTML = score + " / " + answered +
+    (answered > 0 ? ' <span class="score-pct">\u00b7 ' + pct + "%</span>" : "");
+  $("progress-text").textContent = (idx + 1) + " / " + deck.length;
+  $("progress-fill").style.width = ((idx + 1) / deck.length * 100) + "%";
+  $("question-text").textContent = q.q;
+
+  // Choices
+  const container = $("choices-container");
+  container.innerHTML = "";
+  q.choices.forEach((c, i) => {
+    const btn = document.createElement("button");
+    btn.className = "choice-btn";
+    if (revealed) {
+      btn.classList.add("revealed");
+      if (i === q.answer) btn.classList.add("correct");
+      else if (i === selected) btn.classList.add("wrong");
+    }
+    btn.innerHTML = '<span class="choice-letter">' + LETTERS[i] + "</span><span>" + c + "</span>";
+    btn.onclick = () => handleSelect(i);
+    container.appendChild(btn);
+  });
+
+  // Feedback
+  if (revealed) {
+    show("feedback");
+    const fb = $("feedback");
+    if (selected === q.answer) {
+      fb.className = "feedback ok";
+      fb.textContent = "\u2713 Bonne r\u00e9ponse !";
+    } else {
+      fb.className = "feedback ko";
+      fb.textContent = "\u2717 Mauvaise r\u00e9ponse. La bonne r\u00e9ponse \u00e9tait : " + LETTERS[q.answer];
+    }
+  } else {
+    hide("feedback");
+  }
+
+  // Nav
+  $("btn-prev").disabled = idx === 0;
+  $("btn-next").disabled = !revealed;
+
+  if (finished) {
+    hide("nav-bar");
+    show("finish-bar");
+    show("result-box");
+    if (errors.length > 0) {
+      show("btn-review-end");
+      $("error-count-end").textContent = errors.length;
+    } else {
+      hide("btn-review-end");
+    }
+    $("result-pct").textContent = pct + "%";
+    $("result-pct").style.color = pct >= 80 ? "#00b894" : pct >= 50 ? "#fdcb6e" : "#e17055";
+    $("result-detail").textContent = score + " bonnes r\u00e9ponses sur " + answered + " \u2022 " + errors.length + " erreur" + (errors.length > 1 ? "s" : "");
+    $("result-msg").textContent = pct >= 80 ? "Excellent !" : pct >= 50 ? "Pas mal, continue !" : "Continue de r\u00e9viser !";
+  } else {
+    show("nav-bar");
+    hide("finish-bar");
+    hide("result-box");
+  }
+}
+
+// Init
+goMenu();
+</script>
+</body>
+</html>
